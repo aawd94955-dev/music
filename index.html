@@ -4,14 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>나만의 무광고 플레이어</title>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     <style>
         body {
-            font-family: 'Pretendard', sans-serif;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
             background-color: #121212;
             color: white;
             margin: 0;
             padding: 20px;
-            padding-bottom: 100px; /* 플레이어 공간 확보 */
+            padding-bottom: 120px;
         }
         .container {
             max-width: 600px;
@@ -19,22 +20,26 @@
         }
         h1 {
             text-align: center;
-            color: #1DB954; /* 스포티파이 감성의 녹색 */
+            color: #1DB954;
         }
         .search-box {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            position: sticky;
+            top: 10px;
+            z-index: 10;
         }
         input {
             flex: 1;
             padding: 12px;
             border-radius: 8px;
-            border: none;
+            border: 1px solid #333;
             background: #282828;
             color: white;
             font-size: 16px;
         }
+        input:focus { outline: 2px solid #1DB954; }
         button {
             padding: 12px 20px;
             border-radius: 8px;
@@ -50,21 +55,27 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            padding: 10px;
+            padding: 12px;
             background: #181818;
             border-radius: 8px;
             margin-bottom: 10px;
             cursor: pointer;
             transition: 0.2s;
+            border: 1px solid transparent;
         }
-        .result-item:hover { background: #282828; }
+        .result-item:hover { 
+            background: #282828; 
+            border-color: #333;
+        }
         .thumbnail {
             width: 80px;
-            height: 45px;
+            aspect-ratio: 16 / 9;
             border-radius: 4px;
             object-fit: cover;
+            background: #000;
         }
-        .title { font-size: 14px; font-weight: bold; }
+        .info { flex: 1; }
+        .title { font-size: 14px; font-weight: bold; margin-bottom: 4px; color: #fff; }
         .author { font-size: 12px; color: #aaa; }
 
         /* 하단 고정 플레이어 */
@@ -75,82 +86,110 @@
             width: 100%;
             background: #181818;
             border-top: 1px solid #282828;
-            padding: 15px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             box-sizing: border-box;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
         }
         #current-song {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             font-size: 14px;
             font-weight: bold;
             color: #1DB954;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 90%;
         }
         audio {
             width: 100%;
             max-width: 600px;
+            height: 40px;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #1DB954;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🎵 무광고 플레이어</h1>
+    <h1>🎵 MY MUSIC</h1>
     
     <div class="search-box">
-        <input type="text" id="searchInput" placeholder="듣고 싶은 노래 검색..." onkeypress="if(event.key === 'Enter') searchMusic()">
+        <input type="text" id="searchInput" placeholder="노래 제목이나 가수 검색..." onkeypress="if(event.key === 'Enter') searchMusic()">
         <button onclick="searchMusic()">검색</button>
     </div>
 
-    <div id="loading" style="display:none; text-align:center; color:#aaa;">검색 중...</div>
+    <div id="loading">데이터 불러오는 중...</div>
     <div id="results"></div>
 </div>
 
 <div class="player-bar">
-    <div id="current-song">재생 중인 곡이 없습니다</div>
+    <div id="current-song">재생 중인 곡 없음</div>
     <audio id="audioPlayer" controls></audio>
 </div>
 
 <script>
-    // 안정적인 Invidious 서버 주소 (yewtu.be가 막히면 api.invidious.io/instances.json 참고해서 변경 가능)
-    const API_URL = "https://yewtu.be/api/v1"; 
+    // 비교적 안정적인 인스턴스 주소
+    const API_URL = "https://inv.tux.pizza/api/v1"; 
 
     async function searchMusic() {
         const query = document.getElementById('searchInput').value;
-        if (!query) return alert('검색어를 입력하세요!');
+        if (!query) return;
 
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('results').innerHTML = '';
+        const loading = document.getElementById('loading');
+        const resultsDiv = document.getElementById('results');
+
+        loading.style.display = 'block';
+        resultsDiv.innerHTML = '';
+
+        // CORS 해결을 위한 All-Origins 프록시 사용
+        const targetUrl = `${API_URL}/search?q=${encodeURIComponent(query)}`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
         try {
-            // 검색 API 호출
-            const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
-            const data = await response.json();
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error('Network response was not ok');
             
-            document.getElementById('loading').style.display = 'none';
+            const proxyData = await response.json();
+            const data = JSON.parse(proxyData.contents);
+            
+            loading.style.display = 'none';
 
-            // 결과 화면에 그리기
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<div style="text-align:center; color:#888;">검색 결과가 없습니다.</div>';
+                return;
+            }
+
             data.forEach(item => {
-                // 영상 결과만 필터링
                 if (item.type !== 'video') return; 
 
                 const div = document.createElement('div');
                 div.className = 'result-item';
                 div.onclick = () => playMusic(item.videoId, item.title);
                 
+                const thumbUrl = item.videoThumbnails && item.videoThumbnails[0] ? item.videoThumbnails[0].url : '';
+                
                 div.innerHTML = `
-                    <img src="${item.videoThumbnails[0] ? item.videoThumbnails[0].url : ''}" class="thumbnail">
-                    <div>
+                    <img src="${thumbUrl}" class="thumbnail" onerror="this.src='https://via.placeholder.com/80x45?text=No+Img'">
+                    <div class="info">
                         <div class="title">${item.title}</div>
                         <div class="author">${item.author}</div>
                     </div>
                 `;
-                document.getElementById('results').appendChild(div);
+                resultsDiv.appendChild(div);
             });
         } catch (error) {
-            alert('검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-            document.getElementById('loading').style.display = 'none';
+            console.error('Error:', error);
+            alert('검색 실패! 다른 인스턴스를 시도하거나 잠시 후 다시 해주세요.');
+            loading.style.display = 'none';
         }
     }
 
@@ -158,13 +197,15 @@
         const audioPlayer = document.getElementById('audioPlayer');
         const songTitle = document.getElementById('current-song');
         
-        // itag=140 (128kbps m4a 오디오 스트림), local=true (CORS 및 프록시 우회)
-        const audioUrl = `https://yewtu.be/latest_version?id=${videoId}&itag=140&local=true`;
+        // 오디오 스트림 추출 주소 (직접 연결 시도)
+        const audioUrl = `https://inv.tux.pizza/latest_version?id=${videoId}&itag=140&local=true`;
 
-        // 재생 설정
         songTitle.innerText = `▶ 재생 중: ${title}`;
         audioPlayer.src = audioUrl;
-        audioPlayer.play();
+        audioPlayer.play().catch(e => {
+            console.error("재생 에러:", e);
+            alert("이 곡은 현재 재생할 수 없습니다. 다른 검색 결과를 클릭해보세요.");
+        });
     }
 </script>
 
