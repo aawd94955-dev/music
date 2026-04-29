@@ -1,213 +1,2190 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>나만의 무광고 플레이어</title>
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-    <style>
-        body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-            background-color: #121212;
-            color: white;
-            margin: 0;
-            padding: 20px;
-            padding-bottom: 120px;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        h1 {
-            text-align: center;
-            color: #1DB954;
-        }
-        .search-box {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            position: sticky;
-            top: 10px;
-            z-index: 10;
-        }
-        input {
-            flex: 1;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #333;
-            background: #282828;
-            color: white;
-            font-size: 16px;
-        }
-        input:focus { outline: 2px solid #1DB954; }
-        button {
-            padding: 12px 20px;
-            border-radius: 8px;
-            border: none;
-            background: #1DB954;
-            color: black;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        button:hover { background: #1ed760; }
-        
-        .result-item {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 12px;
-            background: #181818;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: 0.2s;
-            border: 1px solid transparent;
-        }
-        .result-item:hover { 
-            background: #282828; 
-            border-color: #333;
-        }
-        .thumbnail {
-            width: 80px;
-            aspect-ratio: 16 / 9;
-            border-radius: 4px;
-            object-fit: cover;
-            background: #000;
-        }
-        .info { flex: 1; }
-        .title { font-size: 14px; font-weight: bold; margin-bottom: 4px; color: #fff; }
-        .author { font-size: 12px; color: #aaa; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뮤직</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
 
-        /* 하단 고정 플레이어 */
-        .player-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: #181818;
-            border-top: 1px solid #282828;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            box-sizing: border-box;
-            box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
-        }
-        #current-song {
-            margin-bottom: 12px;
-            font-size: 14px;
-            font-weight: bold;
-            color: #1DB954;
-            text-align: center;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            width: 90%;
-        }
-        audio {
-            width: 100%;
-            max-width: 600px;
-            height: 40px;
-        }
-        #loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-            color: #1DB954;
-        }
-    </style>
+:root {
+  --accent: #2563eb;
+  --accent2: #1d4ed8;
+  --accent-light: #dbeafe;
+  --bg: #f8f9fc;
+  --bg2: #ffffff;
+  --bg3: #f1f3f9;
+  --bg4: #e8ecf5;
+  --bg5: #d8dce8;
+  --text: #1a1d2e;
+  --text2: #5a5f7a;
+  --text3: #a0a5bc;
+  --red: #f04f5a;
+  --green: #22c65b;
+  --border: rgba(80,100,180,0.10);
+  --shadow: none;
+  --shadow-lg: none;
+  --radius: 14px;
+  --sidebar-w: 230px;
+  --player-h: 76px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: 'Pretendard', 'Gowun Dodum', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 4px; }
+
+/* ===== LAYOUT ===== */
+.app { display: flex; flex: 1; overflow: hidden; }
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  animation: slideInLeft 0.4s cubic-bezier(.22,.68,0,1.2) both;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.logo {
+  padding: 22px 18px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.logo-orb {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+@keyframes orbPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+.logo-orb svg { width: 16px; height: 16px; fill: #fff; }
+
+.nav-section { padding: 0 10px 8px; }
+
+.nav-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text3);
+  padding: 10px 8px 6px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 500; color: var(--text2);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, transform 0.15s;
+  position: relative;
+}
+
+.nav-item:hover {
+  background: var(--bg3);
+  color: var(--text);
+  transform: translateX(2px);
+}
+
+.nav-item.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute; left: 0; top: 20%; bottom: 20%;
+  width: 3px; border-radius: 2px;
+  background: var(--accent);
+  animation: barAppear 0.2s ease both;
+}
+
+@keyframes barAppear {
+  from { opacity: 0; transform: scaleY(0); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+
+.nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 6px; border-radius: 10px;
+  font-family: 'DM Mono', monospace;
+  transition: transform 0.2s;
+}
+.nav-badge.red { background: var(--red); }
+.nav-item:hover .nav-badge { transform: scale(1.1); }
+
+.playlist-list { flex: 1; overflow-y: auto; padding: 0 10px 12px; }
+
+.playlist-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 9px;
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.playlist-item:hover { background: var(--bg3); color: var(--text); transform: translateX(2px); }
+.playlist-item.active { color: var(--accent); background: var(--accent-light); }
+
+.playlist-item-icon { font-size: 15px; opacity: 0.7; flex-shrink: 0; }
+.playlist-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.playlist-item-count {
+  font-size: 11px; color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  background: var(--bg3); padding: 1px 6px; border-radius: 6px;
+}
+
+.new-playlist-btn {
+  margin: 4px 10px 14px;
+  padding: 9px 12px; border-radius: 10px;
+  border: 1.5px dashed var(--bg5);
+  background: transparent; color: var(--text3);
+  font-size: 13px; cursor: pointer;
+  transition: all 0.18s;
+  display: flex; align-items: center; gap: 8px;
+  width: calc(100% - 20px);
+  font-family: 'Pretendard', sans-serif;
+  font-weight: 500;
+}
+.new-playlist-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+  transform: translateY(-1px);
+}
+
+/* ===== MAIN ===== */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 28px 20px;
+  background: var(--bg);
+  animation: fadeInUp 0.35s ease both;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== VIEWS ===== */
+.view { display: none; }
+.view.active { display: block; animation: viewEnter 0.3s ease both; }
+
+@keyframes viewEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.view-header { margin-bottom: 22px; }
+.view-title { font-size: 24px; font-weight: 700; margin-bottom: 3px; letter-spacing: -0.5px; }
+.view-subtitle { font-size: 13px; color: var(--text3); }
+
+/* ===== SEARCH ===== */
+.search-bar { display: flex; gap: 10px; margin-bottom: 18px; }
+
+.search-input-wrap { flex: 1; position: relative; }
+.search-input-wrap svg {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--text3);
+  transition: color 0.2s;
+}
+.search-input-wrap:focus-within svg { color: var(--accent); }
+
+.search-input {
+  width: 100%; padding: 11px 16px 11px 40px;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  color: var(--text); font-size: 14px; outline: none;
+  font-family: 'Pretendard', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow);
+}
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+.search-input::placeholder { color: var(--text3); }
+
+.btn {
+  padding: 11px 22px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff; font-weight: 700; font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+  font-family: 'Pretendard', sans-serif;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0) scale(0.98); }
+
+.btn.outline {
+  background: var(--bg2);
+  color: var(--text2);
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.btn.outline:hover { background: var(--bg3); color: var(--text); transform: none; box-shadow: var(--shadow); }
+.btn.sm { padding: 7px 14px; font-size: 12.5px; }
+
+/* ===== TRACK LIST ===== */
+.track-list { display: flex; flex-direction: column; gap: 3px; }
+
+.track-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px; border-radius: 11px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  animation: trackSlideIn 0.3s ease both;
+}
+
+@keyframes trackSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.track-item:hover {
+  background: var(--bg2);
+  transform: translateX(2px);
+  box-shadow: var(--shadow);
+}
+.track-item.playing {
+  background: var(--accent-light);
+}
+.track-item.playing .track-title { color: var(--accent); font-weight: 600; }
+
+.track-num {
+  width: 24px; text-align: center; font-size: 12px; color: var(--text3);
+  font-family: 'DM Mono', monospace; flex-shrink: 0;
+}
+
+.track-thumb {
+  width: 42px; height: 42px; border-radius: 9px;
+  object-fit: cover; flex-shrink: 0;
+  background: var(--bg3);
+  transition: transform 0.2s;
+}
+.track-item:hover .track-thumb { transform: scale(1.04); }
+
+.track-info { flex: 1; overflow: hidden; min-width: 0; }
+.track-title { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track-author { font-size: 12px; color: var(--text3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.track-duration {
+  font-size: 12px; color: var(--text3);
+  font-family: 'DM Mono', monospace; flex-shrink: 0;
+}
+
+.track-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+.track-item:hover .track-actions { opacity: 1; }
+
+.icon-btn {
+  width: 30px; height: 30px; border-radius: 8px; border: none;
+  background: transparent; color: var(--text3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.icon-btn:hover { background: var(--bg3); color: var(--text); transform: scale(1.1); }
+.icon-btn.active { color: var(--accent); }
+.icon-btn.active-red { color: var(--red); }
+.icon-btn svg { width: 14px; height: 14px; }
+
+/* ===== PLAYING INDICATOR ===== */
+.playing-bars {
+  display: flex; align-items: flex-end; gap: 2px; height: 16px;
+}
+.bar {
+  width: 3px; background: var(--accent); border-radius: 2px;
+}
+.bar:nth-child(1) { animation: barUp 0.7s ease-in-out infinite; }
+.bar:nth-child(2) { animation: barUp 0.7s ease-in-out infinite 0.2s; }
+.bar:nth-child(3) { animation: barUp 0.7s ease-in-out infinite 0.4s; }
+
+@keyframes barUp {
+  0%, 100% { height: 4px; }
+  50% { height: 14px; }
+}
+
+/* ===== STATUS ===== */
+.status-msg {
+  padding: 14px 16px; border-radius: 11px; font-size: 13.5px;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+}
+.status-msg.loading { background: var(--accent-light); color: var(--accent); }
+.status-msg.error { background: #fef1f1; color: var(--red); }
+
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(37,99,235,0.25);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== GRID ===== */
+.playlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px; margin-bottom: 8px;
+}
+
+.playlist-card {
+  background: var(--bg2); border-radius: var(--radius); overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  animation: cardPop 0.3s cubic-bezier(.22,.68,0,1.2) both;
+}
+
+@keyframes cardPop {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.playlist-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+
+.playlist-card-cover {
+  width: 100%; aspect-ratio: 1;
+  background: var(--bg3);
+  display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;
+}
+.playlist-card-cover img { width: 100%; height: 100%; object-fit: cover; }
+.playlist-card-cover.empty {
+  grid-template-columns: 1fr; place-items: center;
+  font-size: 32px;
+  background: linear-gradient(135deg, var(--accent-light), #bfdbfe);
+}
+
+.playlist-card-info { padding: 10px 12px; }
+.playlist-card-name { font-size: 13px; font-weight: 700; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.playlist-card-meta { font-size: 11.5px; color: var(--text3); }
+
+/* ===== HISTORY CHIPS ===== */
+.history-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
+
+.history-chip {
+  padding: 5px 12px; border-radius: 20px;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  font-size: 12.5px; color: var(--text2);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
+  box-shadow: var(--shadow);
+  animation: chipFadeIn 0.2s ease both;
+}
+
+@keyframes chipFadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.history-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.history-chip-del { color: var(--text3); font-size: 14px; line-height: 1; transition: color 0.15s; }
+.history-chip-del:hover { color: var(--red); }
+
+/* ===== EMPTY STATE ===== */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--text3);
+  animation: fadeInUp 0.3s ease both;
+}
+.empty-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.5; }
+.empty-title { font-size: 17px; color: var(--text2); margin-bottom: 6px; font-weight: 600; }
+.empty-desc { font-size: 13.5px; line-height: 1.6; }
+
+/* ===== CONTEXT MENU ===== */
+.ctx-menu {
+  position: fixed;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 6px;
+  min-width: 200px; z-index: 1000;
+  box-shadow: var(--shadow-lg);
+  display: none;
+  animation: ctxAppear 0.15s cubic-bezier(.22,.68,0,1.2) both;
+}
+.ctx-menu.open { display: block; }
+
+@keyframes ctxAppear {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ctx-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 12px; border-radius: 8px; font-size: 13px;
+  color: var(--text2); cursor: pointer; transition: all 0.12s; font-weight: 500;
+}
+.ctx-item:hover { background: var(--bg3); color: var(--text); }
+.ctx-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+.ctx-item.danger { color: var(--red); }
+.ctx-item.danger:hover { background: #fef1f1; }
+.ctx-divider { height: 1px; background: var(--border); margin: 4px 0; }
+.ctx-submenu-label { font-size: 10px; color: var(--text3); padding: 5px 12px 3px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+/* ===== PLAYER BAR ===== */
+#player {
+  height: var(--player-h);
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 260px 1fr 240px;
+  align-items: center;
+  padding: 0 20px; gap: 12px;
+  flex-shrink: 0;
+  animation: playerSlideUp 0.4s cubic-bezier(.22,.68,0,1.2) both;
+  animation-delay: 0.1s;
+}
+
+@keyframes playerSlideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.player-track { display: flex; align-items: center; gap: 11px; min-width: 0; }
+
+.player-thumb {
+  width: 46px; height: 46px; border-radius: 10px;
+  object-fit: cover; background: var(--bg3); flex-shrink: 0;
+  transition: transform 0.3s;
+}
+
+.player-thumb.spinning {
+  animation: vinylSpin 8s linear infinite;
+}
+
+@keyframes vinylSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Music note placeholder */
+.player-thumb-placeholder {
+  width: 46px; height: 46px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-light), #bfdbfe);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+.player-info { min-width: 0; }
+.player-title {
+  font-size: 13.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.player-author { font-size: 11.5px; color: var(--text3); margin-top: 1px; }
+
+.player-controls { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.player-btns { display: flex; align-items: center; gap: 6px; }
+
+.ctrl-btn {
+  width: 34px; height: 34px; border-radius: 9px; border: none;
+  background: transparent; color: var(--text3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.ctrl-btn:hover { background: var(--bg3); color: var(--text); transform: scale(1.08); }
+.ctrl-btn.active { color: var(--accent); }
+.ctrl-btn svg { width: 17px; height: 17px; }
+
+.play-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.18s;
+}
+.play-btn:hover { transform: scale(1.1); }
+.play-btn:active { transform: scale(0.96); }
+.play-btn svg { width: 17px; height: 17px; }
+
+.progress-wrap { display: flex; align-items: center; gap: 8px; width: 100%; }
+
+.progress-bar {
+  flex: 1; height: 4px; background: var(--bg4); border-radius: 3px;
+  cursor: pointer; position: relative; overflow: visible;
+  transition: height 0.15s;
+}
+.progress-bar:hover { height: 6px; }
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 3px;
+  transition: width 0.5s linear;
+  pointer-events: none; width: 0%;
+  position: relative;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute; right: -4px; top: 50%;
+  transform: translateY(-50%);
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.progress-bar:hover .progress-fill::after { opacity: 1; }
+
+.time-label {
+  font-size: 11px; color: var(--text3);
+  font-family: 'DM Mono', monospace; white-space: nowrap;
+}
+
+.player-extra { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+
+.volume-wrap { display: flex; align-items: center; gap: 7px; }
+.volume-slider {
+  width: 75px; height: 4px; appearance: none;
+  background: var(--bg4); border-radius: 3px; outline: none; cursor: pointer;
+}
+.volume-slider::-webkit-slider-thumb {
+  appearance: none; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+  transition: transform 0.15s;
+}
+.volume-slider:hover::-webkit-slider-thumb { transform: scale(1.2); }
+
+/* ===== QUEUE PANEL ===== */
+.queue-panel {
+  width: 0; overflow: hidden;
+  transition: width 0.25s cubic-bezier(.22,.68,0,1.2);
+  background: var(--bg2);
+  border-left: 1px solid transparent;
+  flex-shrink: 0;
+}
+.queue-panel.open { width: 270px; border-left-color: var(--border); }
+
+.queue-inner { padding: 20px; width: 270px; overflow-y: auto; height: 100%; }
+.queue-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+
+.queue-track {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 8px; border-radius: 9px; cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.queue-track:hover { background: var(--bg3); transform: translateX(2px); }
+.queue-track.playing { background: var(--accent-light); }
+.queue-track.playing .qt-title { color: var(--accent); }
+
+.queue-thumb {
+  width: 34px; height: 34px; border-radius: 7px;
+  object-fit: cover; background: var(--bg3); flex-shrink: 0;
+}
+.qt-title { font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qt-author { font-size: 11px; color: var(--text3); }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(26,29,46,0.25);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; display: none;
+}
+.modal-overlay.open { display: flex; animation: overlayFade 0.2s ease; }
+
+@keyframes overlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: var(--bg2); border-radius: 16px; padding: 24px;
+  width: 340px; border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  animation: modalPop 0.25s cubic-bezier(.22,.68,0,1.3) both;
+}
+
+@keyframes modalPop {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+
+.modal-input {
+  width: 100%; padding: 10px 14px; border-radius: 10px;
+  background: var(--bg3); border: 1.5px solid var(--border);
+  color: var(--text); font-size: 14px; outline: none; margin-bottom: 14px;
+  font-family: 'Pretendard', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.modal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ===== TOAST ===== */
+#toast {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: var(--text); color: #fff; font-size: 13px;
+  padding: 9px 18px; border-radius: 20px;
+  pointer-events: none; opacity: 0;
+  transition: opacity 0.25s, transform 0.25s; z-index: 9999; white-space: nowrap;
+  font-weight: 500;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== MOBILE BOTTOM NAV ===== */
+.mobile-nav {
+  display: none;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding: 6px 0 env(safe-area-inset-bottom, 6px);
+}
+
+.mobile-nav-items {
+  display: flex; justify-content: space-around;
+}
+
+.mobile-nav-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 16px; border-radius: 10px; cursor: pointer;
+  transition: all 0.15s; color: var(--text3); font-size: 10.5px;
+  font-weight: 600;
+}
+.mobile-nav-item:hover, .mobile-nav-item.active { color: var(--accent); }
+.mobile-nav-item svg { width: 20px; height: 20px; }
+
+/* ===== MOBILE PLAYER ===== */
+.mobile-player-bar {
+  display: none;
+  background: rgba(255,255,255,0.98);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  :root { --player-h: auto; }
+
+  .sidebar { display: none; }
+  .queue-panel { display: none; }
+
+  .main-content { padding: 20px 16px 16px; }
+
+  #player {
+    display: none;
+  }
+
+  .mobile-player-bar {
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  .mobile-nav { display: block; flex-shrink: 0; }
+
+  .view-title { font-size: 20px; }
+
+  /* Settings responsive */
+  .settings-section { padding: 16px 14px; }
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .settings-row-right {
+    width: 100%;
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+  .instance-select {
+    min-width: unset;
+    max-width: unset;
+    width: 100%;
+  }
+  .instance-status { justify-content: flex-start; }
+  .custom-instance-row { flex-direction: column; }
+  .custom-instance-input { width: 100%; }
+  .custom-instance-row .btn { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .playlist-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+}
+
+/* ===== MOBILE TOP BAR ===== */
+.mobile-topbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  margin: -4px -16px 14px;
+  padding: 10px 16px 10px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+.mobile-topbar-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.mobile-topbar-btn {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mobile-topbar-btn:hover { background: var(--bg3); color: var(--text); }
+.mobile-topbar-btn svg { width: 18px; height: 18px; }
+
+@media (max-width: 768px) {
+  .mobile-topbar { display: flex; }
+  .view-header { display: none; }
+}
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text3); margin-bottom: 10px; margin-top: 4px;
+}
+
+/* stagger animations for track items */
+.track-item:nth-child(1) { animation-delay: 0.00s; }
+.track-item:nth-child(2) { animation-delay: 0.03s; }
+.track-item:nth-child(3) { animation-delay: 0.06s; }
+.track-item:nth-child(4) { animation-delay: 0.09s; }
+.track-item:nth-child(5) { animation-delay: 0.12s; }
+.track-item:nth-child(6) { animation-delay: 0.15s; }
+.track-item:nth-child(7) { animation-delay: 0.18s; }
+.track-item:nth-child(8) { animation-delay: 0.21s; }
+.track-item:nth-child(n+9) { animation-delay: 0.24s; }
+
+.playlist-card:nth-child(1) { animation-delay: 0.04s; }
+.playlist-card:nth-child(2) { animation-delay: 0.08s; }
+.playlist-card:nth-child(3) { animation-delay: 0.12s; }
+.playlist-card:nth-child(4) { animation-delay: 0.16s; }
+.playlist-card:nth-child(n+5) { animation-delay: 0.20s; }
+
+.settings-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+.settings-section-title {
+  font-size: 12px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--text3);
+  margin-bottom: 16px;
+}
+.settings-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 14px; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+.settings-row-label { font-size: 13.5px; font-weight: 500; }
+.settings-row-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.settings-row-right { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+
+.instance-select {
+  padding: 8px 12px; border-radius: 9px;
+  background: var(--bg3); border: 1.5px solid var(--border);
+  color: var(--text); font-size: 13px; outline: none;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer; min-width: 200px; max-width: 280px;
+  transition: border-color 0.2s;
+}
+.instance-select:focus { border-color: var(--accent); }
+
+.instance-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text3);
+}
+.instance-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--bg5); flex-shrink: 0;
+}
+.instance-dot.ok { background: var(--green); }
+.instance-dot.err { background: var(--red); }
+.instance-dot.checking {
+  background: var(--accent);
+  animation: dotPulse 1s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.custom-instance-row {
+  display: flex; gap: 8px; align-items: center; margin-top: 10px;
+}
+.custom-instance-input {
+  flex: 1; padding: 8px 12px; border-radius: 9px;
+  background: var(--bg3); border: 1.5px solid var(--border);
+  color: var(--text); font-size: 13px; outline: none;
+  font-family: 'Pretendard', sans-serif;
+  transition: border-color 0.2s;
+}
+.custom-instance-input:focus { border-color: var(--accent); }
+.instance-list-loading {
+  font-size: 12.5px; color: var(--text3); padding: 8px 0;
+  display: flex; align-items: center; gap: 8px;
+}
+</style>
 </head>
 <body>
 
-<div class="container">
-    <h1>🎵 MY MUSIC</h1>
-    
-    <div class="search-box">
-        <input type="text" id="searchInput" placeholder="노래 제목이나 가수 검색..." onkeypress="if(event.key === 'Enter') searchMusic()">
-        <button onclick="searchMusic()">검색</button>
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-orb">
+      <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+    </div>
+    뮤직
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">메뉴</div>
+    <div class="nav-item active" onclick="showView('search')" id="nav-search">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      검색
+    </div>
+    <div class="nav-item" onclick="showView('favorites')" id="nav-favorites">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      즐겨찾기
+      <span class="nav-badge red" id="fav-count">0</span>
+    </div>
+    <div class="nav-item" onclick="showView('playlists')" id="nav-playlists">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      플레이리스트
+    </div>
+    <div class="nav-item" onclick="showView('queue')" id="nav-queue">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      재생 큐
+      <span class="nav-badge" id="queue-count">0</span>
+    </div>
+    <div class="nav-item" onclick="showView('recent')" id="nav-recent">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      최근 재생
+    </div>
+    <div class="nav-item" onclick="showView('settings')" id="nav-settings">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      설정
+    </div>
+    <div class="nav-item" onclick="showView('profile')" id="nav-profile">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      프로필
+    </div>
+  </div>
+
+  <div style="padding: 0 10px 4px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+    <div class="nav-label">내 플레이리스트</div>
+    <div class="playlist-list" id="sidebar-playlists"></div>
+  </div>
+
+  <button class="new-playlist-btn" onclick="openNewPlaylistModal()">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    새 플레이리스트
+  </button>
+</aside>
+
+<!-- MAIN -->
+<main class="main-content" id="main">
+
+<!-- MOBILE TOP BAR -->
+<div class="mobile-topbar" id="mobile-topbar">
+  <div class="mobile-topbar-title" id="mobile-topbar-title">검색</div>
+  <button class="mobile-topbar-btn" onclick="showView('settings')" title="설정">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+</div>
+
+  <!-- SEARCH VIEW -->
+  <div class="view active" id="view-search">
+    <div class="view-header">
+      <div class="view-title">검색</div>
+      <div class="view-subtitle">노래, 가수를 검색해보세요</div>
+    </div>
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="query" placeholder="노래 제목, 가수 이름..." onkeypress="if(event.keyCode==13)doSearch()">
+      </div>
+      <button class="btn" onclick="doSearch()">검색</button>
+    </div>
+    <div id="history-area" style="margin-bottom:14px;"></div>
+    <div id="results"></div>
+  </div>
+
+  <!-- FAVORITES VIEW -->
+  <div class="view" id="view-favorites">
+    <div class="view-header">
+      <div class="view-title">즐겨찾기</div>
+      <div class="view-subtitle" id="fav-subtitle">즐겨찾기한 노래</div>
+    </div>
+    <div id="fav-list" class="track-list"></div>
+  </div>
+
+  <!-- PLAYLISTS VIEW -->
+  <div class="view" id="view-playlists">
+    <div class="view-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="view-title" id="playlist-view-title">플레이리스트</div>
+        <div class="view-subtitle" id="playlist-view-sub">내 플레이리스트</div>
+      </div>
+      <button class="btn sm outline" onclick="openNewPlaylistModal()" id="new-pl-btn">+ 새 플레이리스트</button>
+    </div>
+    <div id="playlist-content"></div>
+  </div>
+
+  <!-- QUEUE VIEW -->
+  <div class="view" id="view-queue">
+    <div class="view-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div class="view-title">재생 큐</div>
+        <div class="view-subtitle" id="queue-subtitle">대기 중인 노래</div>
+      </div>
+      <button class="btn sm outline" onclick="clearQueue()">비우기</button>
+    </div>
+    <div id="queue-list" class="track-list"></div>
+  </div>
+
+  <!-- RECENT VIEW -->
+  <div class="view" id="view-recent">
+    <div class="view-header">
+      <div class="view-title">최근 재생</div>
+      <div class="view-subtitle">최근에 들은 노래</div>
+    </div>
+    <div id="recent-list" class="track-list"></div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div class="view" id="view-settings">
+    <div class="view-header">
+      <div class="view-title">설정</div>
+      <div class="view-subtitle">환경 설정</div>
     </div>
 
-    <div id="loading">데이터 불러오는 중...</div>
-    <div id="results"></div>
+    <div class="settings-section">
+      <div class="settings-section-title">Invidious 인스턴스</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">서버 선택</div>
+          <div class="settings-row-desc">음악 스트리밍에 사용할 Invidious 인스턴스</div>
+        </div>
+        <div class="settings-row-right" style="flex-direction:column;align-items:flex-end;gap:6px;">
+          <div id="instance-loading" class="instance-list-loading">
+            <div class="spinner"></div> 인스턴스 목록 로딩 중...
+          </div>
+          <select class="instance-select" id="instance-select" onchange="onInstanceSelectChange(this.value)" style="display:none;">
+            <option value="">-- 선택 --</option>
+          </select>
+          <div class="instance-status" id="instance-status">
+            <div class="instance-dot" id="instance-dot"></div>
+            <span id="instance-status-text">-</span>
+          </div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">직접 입력</div>
+          <div class="settings-row-desc">목록에 없는 인스턴스 URL을 직접 입력</div>
+        </div>
+      </div>
+      <div class="custom-instance-row">
+        <input class="custom-instance-input" id="custom-instance-input" placeholder="https://invidious.example.com" />
+        <button class="btn sm" onclick="applyCustomInstance()">적용</button>
+      </div>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:9px;font-size:12px;color:var(--text3);line-height:1.6;">
+        현재 서버: <strong id="current-api-display" style="color:var(--text2);font-weight:600;"></strong>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">정보</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">인스턴스 목록 출처</div>
+          <div class="settings-row-desc">api.invidious.io 에서 공개 인스턴스를 불러옵니다</div>
+        </div>
+        <div class="settings-row-right">
+          <button class="btn sm outline" onclick="refreshInstanceList()">새로고침</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE VIEW -->
+  <div class="view" id="view-profile">
+    <!-- 비로그인 -->
+    <div id="profile-guest">
+      <div class="view-header">
+        <div class="view-title">프로필</div>
+        <div class="view-subtitle">로그인하고 플레이리스트를 동기화하세요</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:16px;">
+        <div style="width:80px;height:80px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;">
+          <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="color:var(--text3)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:17px;font-weight:700;margin-bottom:6px;">로그인이 필요해요</div>
+          <div style="font-size:13.5px;color:var(--text3);line-height:1.6;">로그인하면 플레이리스트를<br>저장하고 기기 간에 유지할 수 있어요</div>
+        </div>
+        <button class="btn" onclick="openAuthModal()" style="padding:12px 32px;font-size:14px;">로그인 / 회원가입</button>
+      </div>
+    </div>
+
+    <!-- 로그인 상태 -->
+    <div id="profile-user" style="display:none;">
+      <div class="view-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="view-title">프로필</div>
+        <button class="btn sm outline" onclick="signOut()" style="color:var(--red);border-color:rgba(240,79,90,0.25);">로그아웃</button>
+      </div>
+
+      <!-- 유저 카드 -->
+      <div style="display:flex;align-items:center;gap:16px;padding:20px;background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:20px;">
+        <div id="profile-avatar" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;flex-shrink:0;"></div>
+        <div style="min-width:0;">
+          <div id="profile-email" style="font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px;">로그인됨</div>
+        </div>
+      </div>
+
+      <!-- 통계 -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;">
+          <div id="stat-playlists" style="font-size:24px;font-weight:700;color:var(--accent);">0</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">플레이리스트</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;">
+          <div id="stat-favorites" style="font-size:24px;font-weight:700;color:var(--red);">0</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">즐겨찾기</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;">
+          <div id="stat-recent" style="font-size:24px;font-weight:700;color:var(--green);">0</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">최근 재생</div>
+        </div>
+      </div>
+
+      <!-- 동기화 -->
+      <div class="settings-section">
+        <div class="settings-section-title">데이터</div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-label">플레이리스트 동기화</div>
+            <div class="settings-row-desc">클라우드에서 최신 데이터를 불러옵니다</div>
+          </div>
+          <div class="settings-row-right">
+            <button class="btn sm outline" onclick="syncPlaylistsFromCloud()">동기화</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYLIST DETAIL VIEW -->
+  <div class="view" id="view-playlist-detail">
+    <div class="view-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0;">
+        <div id="pl-detail-cover" style="width:72px;height:72px;border-radius:12px;background:var(--bg3);display:grid;grid-template-columns:1fr 1fr;overflow:hidden;flex-shrink:0;box-shadow:var(--shadow);"></div>
+        <div style="min-width:0;">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:3px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">플레이리스트</div>
+          <div class="view-title" id="pl-detail-name" style="font-size:20px;"></div>
+          <div class="view-subtitle" id="pl-detail-meta"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0;margin-top:6px;">
+        <button class="btn sm" onclick="playPlaylistAll()">▶ 전체 재생</button>
+        <button class="btn sm outline" onclick="deletePlaylist()" style="color:var(--red);border-color:rgba(240,79,90,0.25)">삭제</button>
+      </div>
+    </div>
+    <div id="pl-detail-tracks" class="track-list" style="margin-top:8px;"></div>
+  </div>
+
+</main>
+
+<!-- QUEUE PANEL -->
+<div class="queue-panel" id="queue-panel">
+  <div class="queue-inner">
+    <div class="queue-title">다음 재생</div>
+    <div id="queue-panel-list"></div>
+  </div>
+</div>
 </div>
 
-<div class="player-bar">
-    <div id="current-song">재생 중인 곡 없음</div>
-    <audio id="audioPlayer" controls></audio>
+<!-- PLAYER BAR (desktop) -->
+<div id="player">
+  <div class="player-track">
+    <div class="player-thumb-placeholder" id="player-thumb-placeholder">
+      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="color:var(--accent);opacity:0.6"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+    </div>
+    <img class="player-thumb" id="player-thumb" src="" alt="" style="display:none;">
+    <div class="player-info">
+      <div class="player-title" id="player-title">재생 준비됨</div>
+      <div class="player-author" id="player-author">노래를 선택하세요</div>
+    </div>
+    <button class="icon-btn" id="fav-btn" onclick="toggleCurrentFav()" title="즐겨찾기">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
+  </div>
+
+  <div class="player-controls">
+    <div class="player-btns">
+      <button class="ctrl-btn" id="shuffle-btn" onclick="toggleShuffle()" title="셔플">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      </button>
+      <button class="ctrl-btn" onclick="prevTrack()" title="이전">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <button class="play-btn" id="play-btn" onclick="togglePlay()">
+        <svg id="play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="ctrl-btn" onclick="nextTrack()" title="다음">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zm2.5-6 5.5 3.9V8.1z"/><path d="M16 6h2v12h-2z"/></svg>
+      </button>
+      <button class="ctrl-btn" id="repeat-btn" onclick="cycleRepeat()" title="반복">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" id="repeat-icon"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      </button>
+    </div>
+    <div class="progress-wrap">
+      <span class="time-label" id="time-cur">0:00</span>
+      <div class="progress-bar" onclick="seekTo(event)" id="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <span class="time-label" id="time-total">0:00</span>
+    </div>
+  </div>
+
+  <div class="player-extra">
+    <button class="ctrl-btn" id="queue-toggle-btn" onclick="toggleQueuePanel()" title="재생 큐">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    </button>
+    <div class="volume-wrap">
+      <svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24" style="color:var(--text3)"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+      <input type="range" class="volume-slider" id="vol" min="0" max="100" value="80" oninput="setVolume(this.value)">
+    </div>
+  </div>
 </div>
+
+<!-- MOBILE PLAYER BAR -->
+<div class="mobile-player-bar" id="mobile-player">
+  <div class="player-thumb-placeholder" id="mobile-thumb-placeholder" style="width:42px;height:42px;border-radius:9px;font-size:18px;flex-shrink:0;background:linear-gradient(135deg,var(--accent-light),#bfdbfe);display:flex;align-items:center;justify-content:center;">
+    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="color:var(--accent);opacity:0.6"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+  </div>
+  <img id="mobile-thumb" src="" alt="" style="display:none;width:42px;height:42px;border-radius:9px;object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.1);">
+  <div style="flex:1;min-width:0;">
+    <div id="mobile-title" style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">재생 준비됨</div>
+    <div id="mobile-author" style="font-size:11.5px;color:var(--text3);">노래를 선택하세요</div>
+  </div>
+  <button class="play-btn" onclick="togglePlay()" style="width:36px;height:36px;flex-shrink:0;">
+    <svg id="mobile-play-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+  </button>
+  <button class="ctrl-btn" onclick="nextTrack()" style="flex-shrink:0;">
+    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zm2.5-6 5.5 3.9V8.1z"/><path d="M16 6h2v12h-2z"/></svg>
+  </button>
+</div>
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav">
+  <div class="mobile-nav-items">
+    <div class="mobile-nav-item active" onclick="showView('search')" id="mnav-search">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      검색
+    </div>
+    <div class="mobile-nav-item" onclick="showView('favorites')" id="mnav-favorites">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      즐겨찾기
+    </div>
+    <div class="mobile-nav-item" onclick="showView('playlists')" id="mnav-playlists">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      플레이리스트
+    </div>
+    <div class="mobile-nav-item" onclick="showView('recent')" id="mnav-recent">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      최근
+    </div>
+    <div class="mobile-nav-item" onclick="showView('profile')" id="mnav-profile">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      프로필
+    </div>
+  </div>
+</div>
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" onclick="ctxPlay()">
+    <svg fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> 재생
+  </div>
+  <div class="ctx-item" onclick="ctxAddQueue()">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 큐에 추가
+  </div>
+  <div class="ctx-item" onclick="ctxToggleFav()">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    즐겨찾기 토글
+  </div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-submenu-label">플레이리스트에 추가</div>
+  <div id="ctx-playlist-items"></div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item danger" id="ctx-remove-item" onclick="ctxRemove()" style="display:none">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    제거
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">새 플레이리스트</div>
+    <input class="modal-input" id="modal-input" placeholder="플레이리스트 이름..." onkeypress="if(event.keyCode==13)confirmModal()">
+    <div class="modal-actions">
+      <button class="btn outline" onclick="closeModal()">취소</button>
+      <button class="btn" onclick="confirmModal()">만들기</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal" style="width:380px;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div class="logo-orb" style="margin:0 auto 12px;width:44px;height:44px;border-radius:14px;">
+        <svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:#fff;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+      </div>
+      <div class="modal-title" style="margin-bottom:4px;" id="auth-modal-title">로그인</div>
+      <div style="font-size:12.5px;color:var(--text3);" id="auth-modal-sub">플레이리스트를 저장하고 어디서든 들어요</div>
+    </div>
+    <div id="auth-error" style="display:none;background:#fef1f1;color:var(--red);font-size:12.5px;padding:9px 12px;border-radius:9px;margin-bottom:12px;"></div>
+    <input class="modal-input" id="auth-email" type="email" placeholder="이메일" style="margin-bottom:8px;">
+    <input class="modal-input" id="auth-password" type="password" placeholder="비밀번호" style="margin-bottom:4px;" onkeypress="if(event.keyCode==13)authSubmit()">
+    <div style="text-align:right;margin-bottom:14px;">
+      <span id="auth-toggle-link" onclick="toggleAuthMode()" style="font-size:12px;color:var(--accent);cursor:pointer;font-weight:500;">계정이 없으신가요? 회원가입</span>
+    </div>
+    <div class="modal-actions" style="flex-direction:column;gap:8px;">
+      <button class="btn" id="auth-submit-btn" onclick="authSubmit()" style="width:100%;justify-content:center;">로그인</button>
+      <button class="btn outline" onclick="closeAuthModal()" style="width:100%;justify-content:center;">취소</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<audio id="audio" preload="none"></audio>
 
 <script>
-    // 비교적 안정적인 인스턴스 주소
-    const API_URL = "https://inv.tux.pizza/api/v1"; 
+// ===== SUPABASE =====
+const SUPABASE_URL = 'https://frvtocklyuhpzhfqllan.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZydnRvY2tseXVocHpoZnFsbGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NTQ4NjcsImV4cCI6MjA5MzAzMDg2N30.0JvHpH44TCl6aCJkeQmQUOA-AqnWvFoVSqQ3QQ4BkQU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function searchMusic() {
-        const query = document.getElementById('searchInput').value;
-        if (!query) return;
+let currentUser = null;
+let authMode = 'login'; // 'login' | 'signup'
 
-        const loading = document.getElementById('loading');
-        const resultsDiv = document.getElementById('results');
+// ===== AUTH UI =====
+function openAuthModal() {
+  authMode = 'login';
+  updateAuthModalUI();
+  document.getElementById('auth-modal').classList.add('open');
+  document.getElementById('auth-email').focus();
+}
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('open');
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+  document.getElementById('auth-error').style.display = 'none';
+}
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  updateAuthModalUI();
+}
+function updateAuthModalUI() {
+  const isLogin = authMode === 'login';
+  document.getElementById('auth-modal-title').textContent = isLogin ? '로그인' : '회원가입';
+  document.getElementById('auth-modal-sub').textContent = isLogin ? '플레이리스트를 저장하고 어디서든 들어요' : '이메일로 간단하게 가입할 수 있어요';
+  document.getElementById('auth-submit-btn').textContent = isLogin ? '로그인' : '회원가입';
+  document.getElementById('auth-toggle-link').textContent = isLogin ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인';
+  document.getElementById('auth-error').style.display = 'none';
+}
 
-        loading.style.display = 'block';
-        resultsDiv.innerHTML = '';
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-submit-btn');
+  if (!email || !password) { showAuthError('이메일과 비밀번호를 입력해주세요.'); return; }
 
-        // CORS 해결을 위한 All-Origins 프록시 사용
-        const targetUrl = `${API_URL}/search?q=${encodeURIComponent(query)}`;
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+  btn.textContent = '잠깐만요...';
+  btn.disabled = true;
 
-        try {
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error('Network response was not ok');
-            
-            const proxyData = await response.json();
-            const data = JSON.parse(proxyData.contents);
-            
-            loading.style.display = 'none';
+  try {
+    let result;
+    if (authMode === 'login') {
+      result = await sb.auth.signInWithPassword({ email, password });
+    } else {
+      result = await sb.auth.signUp({ email, password });
+    }
+    if (result.error) {
+      showAuthError(result.error.message);
+    } else {
+      if (authMode === 'signup' && !result.data.session) {
+        showAuthError('메일함을 확인해주세요');
+      } else {
+        closeAuthModal();
+        toast(authMode === 'login' ? '로그인됨' : '회원가입 완료!');
+      }
+    }
+  } catch(e) {
+    showAuthError('다시 시도해주세요');
+  }
+  btn.disabled = false;
+  btn.textContent = authMode === 'login' ? '로그인' : '회원가입';
+}
 
-            if (data.length === 0) {
-                resultsDiv.innerHTML = '<div style="text-align:center; color:#888;">검색 결과가 없습니다.</div>';
-                return;
-            }
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
 
-            data.forEach(item => {
-                if (item.type !== 'video') return; 
+async function signOut() {
+  await sb.auth.signOut();
+  currentUser = null;
+  updateUserUI(null);
+  toast('로그아웃됨');
+}
 
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                div.onclick = () => playMusic(item.videoId, item.title);
-                
-                const thumbUrl = item.videoThumbnails && item.videoThumbnails[0] ? item.videoThumbnails[0].url : '';
-                
-                div.innerHTML = `
-                    <img src="${thumbUrl}" class="thumbnail" onerror="this.src='https://via.placeholder.com/80x45?text=No+Img'">
-                    <div class="info">
-                        <div class="title">${item.title}</div>
-                        <div class="author">${item.author}</div>
-                    </div>
-                `;
-                resultsDiv.appendChild(div);
-            });
-        } catch (error) {
-            console.error('Error:', error);
-            alert('검색 실패! 다른 인스턴스를 시도하거나 잠시 후 다시 해주세요.');
-            loading.style.display = 'none';
+function updateUserUI(user) {
+  const isLoggedIn = !!user;
+  // 프로필 뷰
+  document.getElementById('profile-guest').style.display = isLoggedIn ? 'none' : 'block';
+  document.getElementById('profile-user').style.display = isLoggedIn ? 'block' : 'none';
+  if (isLoggedIn) {
+    const email = user.email || '';
+    document.getElementById('profile-email').textContent = email;
+    document.getElementById('profile-avatar').textContent = email[0]?.toUpperCase() || '?';
+    // 통계 업데이트
+    document.getElementById('stat-playlists').textContent = state.playlists.length;
+    document.getElementById('stat-favorites').textContent = state.favorites.length;
+    document.getElementById('stat-recent').textContent = state.recent.length;
+  }
+}
+
+// ===== SUPABASE PLAYLIST SYNC =====
+async function syncPlaylistsFromCloud() {
+  if (!currentUser) return;
+  const { data, error } = await sb.from('playlists').select('*').eq('user_id', currentUser.id);
+  if (error) { console.error('플레이리스트 로드 실패:', error); return; }
+  if (data && data.length) {
+    state.playlists = data.map(row => ({
+      id: row.id,
+      name: row.name,
+      tracks: row.tracks || [],
+      cloud: true
+    }));
+    saveState();
+    updateSidebarPlaylists();
+    if (state.currentView === 'playlists') renderPlaylists();
+    toast('플레이리스트 불러옴');
+  }
+}
+
+async function savePlaylistToCloud(pl) {
+  if (!currentUser) return;
+  const { error } = await sb.from('playlists').upsert({
+    id: pl.id,
+    user_id: currentUser.id,
+    name: pl.name,
+    tracks: pl.tracks,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'id' });
+  if (error) console.error('플레이리스트 저장 실패:', error);
+}
+
+async function deletePlaylistFromCloud(id) {
+  if (!currentUser) return;
+  await sb.from('playlists').delete().eq('id', id).eq('user_id', currentUser.id);
+}
+
+// ===== AUTH STATE LISTENER =====
+sb.auth.onAuthStateChange(async (event, session) => {
+  currentUser = session?.user || null;
+  updateUserUI(currentUser);
+  if (currentUser) {
+    await syncPlaylistsFromCloud();
+  }
+});
+
+let API = localStorage.getItem('apiInstance') || "https://inv.thepixora.com";
+
+let state = {
+  queue: [],
+  queueIdx: -1,
+  shuffle: false,
+  repeat: 0,
+  favorites: JSON.parse(localStorage.getItem('favs') || '[]'),
+  playlists: JSON.parse(localStorage.getItem('playlists') || '[]'),
+  recent: JSON.parse(localStorage.getItem('recent') || '[]'),
+  searchHistory: JSON.parse(localStorage.getItem('history') || '[]'),
+  currentTrack: null,
+  currentView: 'search',
+  currentPlaylistId: null,
+  ctxTrack: null,
+  ctxContext: null
+};
+
+function saveState() {
+  localStorage.setItem('favs', JSON.stringify(state.favorites));
+  localStorage.setItem('playlists', JSON.stringify(state.playlists));
+  localStorage.setItem('recent', JSON.stringify(state.recent));
+  localStorage.setItem('history', JSON.stringify(state.searchHistory));
+}
+
+// ===== AUDIO =====
+const audio = document.getElementById('audio');
+audio.volume = 0.8;
+
+audio.addEventListener('timeupdate', () => {
+  if (!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('time-cur').textContent = fmt(audio.currentTime);
+  document.getElementById('time-total').textContent = fmt(audio.duration);
+});
+
+audio.addEventListener('ended', () => {
+  if (state.repeat === 2) { audio.play(); return; }
+  nextTrack();
+});
+
+audio.addEventListener('play', () => {
+  document.getElementById('play-icon').innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+  document.getElementById('mobile-play-icon').innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+  const thumb = document.getElementById('player-thumb');
+  if (thumb.style.display !== 'none') thumb.classList.add('spinning');
+});
+
+audio.addEventListener('pause', () => {
+  document.getElementById('play-icon').innerHTML = '<path d="M8 5v14l11-7z"/>';
+  document.getElementById('mobile-play-icon').innerHTML = '<path d="M8 5v14l11-7z"/>';
+  document.getElementById('player-thumb').classList.remove('spinning');
+});
+
+function fmt(s) {
+  if (!s || isNaN(s)) return '0:00';
+  const m = Math.floor(s/60), sec = Math.floor(s%60);
+  return m + ':' + String(sec).padStart(2,'0');
+}
+
+function togglePlay() { audio.paused ? audio.play() : audio.pause(); }
+
+function seekTo(e) {
+  if (!audio.duration) return;
+  const bar = document.getElementById('progress-bar');
+  const pct = (e.clientX - bar.getBoundingClientRect().left) / bar.offsetWidth;
+  audio.currentTime = pct * audio.duration;
+}
+
+function setVolume(v) { audio.volume = v / 100; }
+
+function toggleShuffle() {
+  state.shuffle = !state.shuffle;
+  document.getElementById('shuffle-btn').classList.toggle('active', state.shuffle);
+  toast(state.shuffle ? '셔플 켜짐' : '셔플 꺼짐');
+}
+
+function cycleRepeat() {
+  state.repeat = (state.repeat + 1) % 3;
+  const btn = document.getElementById('repeat-btn');
+  const labels = ['반복 꺼짐', '전체 반복', '한 곡 반복'];
+  btn.classList.toggle('active', state.repeat > 0);
+  const icon = document.getElementById('repeat-icon');
+  if (state.repeat === 2) {
+    icon.innerHTML = '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><text x="11" y="13.5" font-size="7" fill="currentColor" text-anchor="middle" font-weight="bold">1</text>';
+  } else {
+    icon.innerHTML = '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>';
+  }
+  toast(labels[state.repeat]);
+}
+
+function prevTrack() {
+  if (state.queue.length === 0) return;
+  if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  state.queueIdx = (state.queueIdx - 1 + state.queue.length) % state.queue.length;
+  loadAndPlay(state.queue[state.queueIdx]);
+}
+
+function nextTrack() {
+  if (state.queue.length === 0) return;
+  if (state.shuffle) {
+    let idx; do { idx = Math.floor(Math.random() * state.queue.length); } while (idx === state.queueIdx && state.queue.length > 1);
+    state.queueIdx = idx;
+  } else {
+    if (state.queueIdx >= state.queue.length - 1) {
+      if (state.repeat === 1) state.queueIdx = 0;
+      else { audio.pause(); return; }
+    } else { state.queueIdx++; }
+  }
+  loadAndPlay(state.queue[state.queueIdx]);
+}
+
+// ===== PLAY =====
+async function playTrack(track) {
+  if (state.queue.length === 0 || !state.queue.find(t => t.videoId === track.videoId)) {
+    state.queue = [track]; state.queueIdx = 0;
+  } else {
+    state.queueIdx = state.queue.findIndex(t => t.videoId === track.videoId);
+  }
+  loadAndPlay(track);
+}
+
+async function loadAndPlay(track) {
+  state.currentTrack = track;
+  updatePlayerUI(track);
+  updateQueueUI();
+  setPlayerStatus('로딩 중...');
+
+  try {
+    const res = await fetch(`${API}/api/v1/videos/${track.videoId}`);
+    const data = await res.json();
+    const af = (data.adaptiveFormats || []).filter(f => f.type && f.type.includes('audio'));
+    if (!af.length) { setPlayerStatus('오디오를 찾을 수 없음'); return; }
+    af.sort((a,b) => (b.bitrate||0)-(a.bitrate||0));
+    audio.src = af[0].url;
+    audio.load();
+    try { await audio.play(); } catch(pe) { console.warn('play() blocked:', pe); }
+    addRecent(track);
+    updateAllTrackHighlights();
+    setPlayerStatus('');
+  } catch(e) {
+    console.error('loadAndPlay error:', e);
+    setPlayerStatus('재생 오류');
+  }
+}
+
+function setPlayerStatus(msg) {
+  if (msg && state.currentTrack) {
+    document.getElementById('player-author').textContent = msg;
+    document.getElementById('mobile-author').textContent = msg;
+  } else if (state.currentTrack) {
+    document.getElementById('player-author').textContent = state.currentTrack.author || '';
+    document.getElementById('mobile-author').textContent = state.currentTrack.author || '';
+  }
+}
+
+function updatePlayerUI(track) {
+  document.getElementById('player-title').textContent = track.title;
+  document.getElementById('player-author').textContent = track.author || '';
+  document.getElementById('mobile-title').textContent = track.title;
+  document.getElementById('mobile-author').textContent = track.author || '';
+
+  // Desktop thumb
+  const ph = document.getElementById('player-thumb-placeholder');
+  const thumb = document.getElementById('player-thumb');
+  if (track.thumb) {
+    ph.style.display = 'none';
+    thumb.style.display = '';
+    thumb.src = track.thumb;
+  } else {
+    ph.style.display = 'flex';
+    thumb.style.display = 'none';
+  }
+
+  // Mobile thumb
+  const mPh = document.getElementById('mobile-thumb-placeholder');
+  const mThumb = document.getElementById('mobile-thumb');
+  if (track.thumb) {
+    mPh.style.display = 'none';
+    mThumb.style.display = '';
+    mThumb.src = track.thumb;
+  } else {
+    mPh.style.display = 'flex';
+    mThumb.style.display = 'none';
+  }
+
+  const favBtn = document.getElementById('fav-btn');
+  favBtn.classList.toggle('active', isFav(track.videoId));
+}
+
+// ===== SEARCH =====
+async function doSearch() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+  addHistory(q);
+  const div = document.getElementById('results');
+  div.innerHTML = '<div class="status-msg loading"><div class="spinner"></div>검색 중...</div>';
+  try {
+    const res = await fetch(`${API}/api/v1/search?q=${encodeURIComponent(q)}&type=video`);
+    const data = await res.json();
+    div.innerHTML = '';
+    if (!data.length) { div.innerHTML = '<div class="empty-state"><div class="empty-title">결과 없음</div></div>'; return; }
+    const tracks = data.map(item => ({
+      videoId: item.videoId,
+      title: item.title,
+      author: item.author,
+      thumb: `${API}/vi/${item.videoId}/mqdefault.jpg`,
+      duration: item.lengthSeconds
+    }));
+    const list = document.createElement('div');
+    list.className = 'track-list';
+    tracks.forEach((t, i) => list.appendChild(makeTrackEl(t, i, tracks, 'search')));
+    div.appendChild(list);
+  } catch(e) {
+    div.innerHTML = '<div class="status-msg error">서버 연결 오류</div>';
+  }
+}
+
+const trackMap = {};
+
+function makeTrackEl(track, idx, contextTracks, contextType, contextId) {
+  trackMap[track.videoId] = track;
+  const isPlaying = state.currentTrack && state.currentTrack.videoId === track.videoId;
+  const favd = isFav(track.videoId);
+  const vid = track.videoId;
+  const div = document.createElement('div');
+  div.className = 'track-item' + (isPlaying ? ' playing' : '');
+  div.dataset.videoId = vid;
+
+  const numContent = isPlaying
+    ? `<div class="playing-bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>`
+    : (idx+1);
+
+  div.innerHTML = `
+    <div class="track-num">${numContent}</div>
+    <img class="track-thumb" src="${track.thumb||''}" alt="" onerror="this.style.background='var(--bg4)'">
+    <div class="track-info">
+      <div class="track-title">${esc(track.title)}</div>
+      <div class="track-author">${esc(track.author||'')}</div>
+    </div>
+    ${track.duration ? `<div class="track-duration">${fmt(track.duration)}</div>` : ''}
+    <div class="track-actions">
+      <button class="icon-btn ${favd?'active-red':''}" data-fav="${vid}" title="즐겨찾기">
+        <svg fill="${favd?'currentColor':'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+      <button class="icon-btn" data-queue="${vid}" title="큐에 추가">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  `;
+  div.querySelector('[data-fav]').onclick = (e) => { e.stopPropagation(); toggleFav(trackMap[vid]); };
+  div.querySelector('[data-queue]').onclick = (e) => { e.stopPropagation(); addToQueue(trackMap[vid]); };
+  div.onclick = () => {
+    state.queue = contextTracks || [track];
+    state.queueIdx = idx;
+    loadAndPlay(track);
+  };
+  div.oncontextmenu = (e) => { e.preventDefault(); openCtxMenu(e, track, contextType, contextId); };
+  return div;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== FAVORITES =====
+function isFav(id) { return state.favorites.some(t => t.videoId === id); }
+
+function toggleFav(track) {
+  if (isFav(track.videoId)) {
+    state.favorites = state.favorites.filter(t => t.videoId !== track.videoId);
+    toast('즐겨찾기에서 제거됨');
+  } else {
+    state.favorites.unshift(track);
+    toast('즐겨찾기에 추가됨');
+  }
+  saveState();
+  updateFavCount();
+  updateAllTrackHighlights();
+  if (state.currentTrack?.videoId === track.videoId) {
+    document.getElementById('fav-btn').classList.toggle('active', isFav(track.videoId));
+  }
+  if (state.currentView === 'favorites') renderFavorites();
+}
+
+function toggleCurrentFav() {
+  if (!state.currentTrack) return;
+  toggleFav(state.currentTrack);
+}
+
+function updateFavCount() {
+  const n = state.favorites.length;
+  document.getElementById('fav-count').textContent = n;
+  const s = document.getElementById('fav-subtitle');
+  if (s) s.textContent = n + '개의 노래';
+}
+
+function renderFavorites() {
+  const div = document.getElementById('fav-list');
+  if (!state.favorites.length) {
+    div.innerHTML = '<div class="empty-state"><div class="empty-icon">♥</div><div class="empty-title">즐겨찾기가 비어있어요</div><div class="empty-desc">노래 옆의 하트를 눌러 추가하세요</div></div>';
+    return;
+  }
+  div.innerHTML = '';
+  state.favorites.forEach((t,i) => div.appendChild(makeTrackEl(t,i,state.favorites,'favorites')));
+}
+
+// ===== PLAYLISTS =====
+function openNewPlaylistModal() {
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-input').value = '';
+  setTimeout(() => document.getElementById('modal-input').focus(), 100);
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function confirmModal() {
+  const name = document.getElementById('modal-input').value.trim();
+  if (!name) return;
+  const pl = { id: crypto.randomUUID(), name, tracks: [] };
+  state.playlists.push(pl);
+  saveState();
+  closeModal();
+  updateSidebarPlaylists();
+  toast(`"${name}" 만들어짐`);
+  if (state.currentView === 'playlists') renderPlaylists();
+  savePlaylistToCloud(pl);
+}
+
+function updateSidebarPlaylists() {
+  const div = document.getElementById('sidebar-playlists');
+  div.innerHTML = '';
+  state.playlists.forEach(pl => {
+    const d = document.createElement('div');
+    d.className = 'playlist-item' + (state.currentPlaylistId === pl.id ? ' active' : '');
+    d.innerHTML = `<span class="playlist-item-icon">♪</span><span class="playlist-item-name">${esc(pl.name)}</span><span class="playlist-item-count">${pl.tracks.length}</span>`;
+    d.onclick = () => showPlaylistDetail(pl.id);
+    div.appendChild(d);
+  });
+}
+
+function renderPlaylists() {
+  const div = document.getElementById('playlist-content');
+  document.getElementById('playlist-view-title').textContent = '플레이리스트';
+  document.getElementById('playlist-view-sub').textContent = '내 플레이리스트';
+  document.getElementById('new-pl-btn').style.display = '';
+  state.currentPlaylistId = null;
+
+  if (!state.playlists.length) {
+    div.innerHTML = '<div class="empty-state"><div class="empty-icon">♪</div><div class="empty-title">플레이리스트 없음</div><div class="empty-desc">새 플레이리스트를 만들어보세요</div></div>';
+    return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'playlist-grid';
+  state.playlists.forEach(pl => {
+    const card = document.createElement('div');
+    card.className = 'playlist-card';
+    const thumbs = pl.tracks.slice(0,4).map(t => t.thumb ? `<img src="${t.thumb}" alt="">` : '').join('');
+    card.innerHTML = `
+      <div class="playlist-card-cover ${!pl.tracks.length?'empty':''}">${pl.tracks.length ? thumbs : '♪'}</div>
+      <div class="playlist-card-info">
+        <div class="playlist-card-name">${esc(pl.name)}</div>
+        <div class="playlist-card-meta">${pl.tracks.length}곡</div>
+      </div>
+    `;
+    card.onclick = () => showPlaylistDetail(pl.id);
+    grid.appendChild(card);
+  });
+  div.innerHTML = '';
+  div.appendChild(grid);
+}
+
+function showPlaylistDetail(id) {
+  state.currentPlaylistId = id;
+  const pl = state.playlists.find(p => p.id === id);
+  if (!pl) return;
+  showView('playlists');
+
+  document.getElementById('playlist-view-title').textContent = pl.name;
+  document.getElementById('playlist-view-sub').textContent = pl.tracks.length + '곡';
+  document.getElementById('new-pl-btn').style.display = 'none';
+  updateSidebarPlaylists();
+
+  const div = document.getElementById('playlist-content');
+  if (!pl.tracks.length) {
+    div.innerHTML = '<div class="empty-state"><div class="empty-title">비어있음</div><div class="empty-desc">검색 결과에서 노래를 추가하세요</div></div>';
+    return;
+  }
+  div.innerHTML = '';
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;';
+  header.innerHTML = `
+    <button class="btn sm" onclick="playPlaylistAll('${id}')">▶ 전체 재생</button>
+    <button class="btn sm outline" onclick="shufflePlayAll('${id}')">⇌ 셔플 재생</button>
+  `;
+  div.appendChild(header);
+  const list = document.createElement('div');
+  list.className = 'track-list';
+  pl.tracks.forEach((t,i) => list.appendChild(makeTrackEl(t,i,pl.tracks,'playlist',id)));
+  div.appendChild(list);
+}
+
+function playPlaylistAll(id) {
+  const plId = id || state.currentPlaylistId;
+  const pl = state.playlists.find(p => p.id === plId);
+  if (!pl || !pl.tracks.length) return;
+  state.queue = [...pl.tracks];
+  state.queueIdx = 0;
+  loadAndPlay(pl.tracks[0]);
+  toast(`"${pl.name}" 재생 시작`);
+}
+
+function shufflePlayAll(id) {
+  const pl = state.playlists.find(p => p.id === id);
+  if (!pl || !pl.tracks.length) return;
+  const shuffled = [...pl.tracks].sort(() => Math.random()-0.5);
+  state.queue = shuffled;
+  state.queueIdx = 0;
+  state.shuffle = true;
+  document.getElementById('shuffle-btn').classList.add('active');
+  loadAndPlay(shuffled[0]);
+  toast(`"${pl.name}" 셔플 재생`);
+}
+
+function deletePlaylist() {
+  if (!state.currentPlaylistId) return;
+  const pl = state.playlists.find(p => p.id === state.currentPlaylistId);
+  if (!confirm(`"${pl.name}" 플레이리스트를 삭제할까요?`)) return;
+  deletePlaylistFromCloud(state.currentPlaylistId);
+  state.playlists = state.playlists.filter(p => p.id !== state.currentPlaylistId);
+  state.currentPlaylistId = null;
+  saveState();
+  updateSidebarPlaylists();
+  renderPlaylists();
+  toast('플레이리스트 삭제됨');
+}
+
+function addTrackToPlaylist(track, plId) {
+  const pl = state.playlists.find(p => p.id === plId);
+  if (!pl) return;
+  if (pl.tracks.find(t => t.videoId === track.videoId)) { toast('이미 추가됨'); return; }
+  pl.tracks.push(track);
+  saveState();
+  updateSidebarPlaylists();
+  toast(`"${pl.name}"에 추가됨`);
+  savePlaylistToCloud(pl);
+}
+
+function removeFromPlaylist(videoId, plId) {
+  const pl = state.playlists.find(p => p.id === plId);
+  if (!pl) return;
+  pl.tracks = pl.tracks.filter(t => t.videoId !== videoId);
+  saveState();
+  showPlaylistDetail(plId);
+  updateSidebarPlaylists();
+  toast('플레이리스트에서 제거됨');
+  savePlaylistToCloud(pl);
+}
+
+// ===== QUEUE =====
+function addToQueue(track) {
+  if (state.queue.find(t => t.videoId === track.videoId)) { toast('이미 큐에 있음'); return; }
+  state.queue.push(track);
+  updateQueueUI();
+  toast('큐에 추가됨');
+}
+
+function clearQueue() {
+  state.queue = [];
+  state.queueIdx = -1;
+  updateQueueUI();
+  toast('큐가 비워짐');
+}
+
+function updateQueueUI() {
+  document.getElementById('queue-count').textContent = state.queue.length;
+  const sub = document.getElementById('queue-subtitle');
+  if (sub) sub.textContent = state.queue.length + '곡 대기 중';
+
+  const panel = document.getElementById('queue-panel-list');
+  panel.innerHTML = '';
+  state.queue.forEach((t,i) => {
+    const d = document.createElement('div');
+    d.className = 'queue-track' + (i === state.queueIdx ? ' playing' : '');
+    d.innerHTML = `<img class="queue-thumb" src="${t.thumb||''}" alt=""><div style="min-width:0"><div class="qt-title">${esc(t.title)}</div><div class="qt-author">${esc(t.author||'')}</div></div>`;
+    d.onclick = () => { state.queueIdx = i; loadAndPlay(t); };
+    panel.appendChild(d);
+  });
+
+  if (state.currentView === 'queue') renderQueueView();
+}
+
+function renderQueueView() {
+  const div = document.getElementById('queue-list');
+  if (!state.queue.length) {
+    div.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:0.3"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="empty-title">큐가 비어있어요</div><div class="empty-desc">노래를 + 버튼으로 추가하세요</div></div>';
+    return;
+  }
+  div.innerHTML = '';
+  state.queue.forEach((t,i) => div.appendChild(makeTrackEl(t,i,state.queue,'queue')));
+}
+
+function toggleQueuePanel() {
+  const panel = document.getElementById('queue-panel');
+  panel.classList.toggle('open');
+  document.getElementById('queue-toggle-btn').classList.toggle('active', panel.classList.contains('open'));
+}
+
+// ===== RECENT =====
+function addRecent(track) {
+  state.recent = state.recent.filter(t => t.videoId !== track.videoId);
+  state.recent.unshift(track);
+  if (state.recent.length > 50) state.recent.pop();
+  saveState();
+  if (state.currentView === 'recent') renderRecent();
+}
+
+function renderRecent() {
+  const div = document.getElementById('recent-list');
+  if (!state.recent.length) {
+    div.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:0.3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="empty-title">재생 기록 없음</div></div>';
+    return;
+  }
+  div.innerHTML = '';
+  state.recent.forEach((t,i) => div.appendChild(makeTrackEl(t,i,state.recent,'recent')));
+}
+
+// ===== HISTORY =====
+function addHistory(q) {
+  state.searchHistory = state.searchHistory.filter(h => h !== q);
+  state.searchHistory.unshift(q);
+  if (state.searchHistory.length > 10) state.searchHistory.pop();
+  saveState();
+  renderHistory();
+}
+
+function renderHistory() {
+  const div = document.getElementById('history-area');
+  if (!state.searchHistory.length) { div.innerHTML = ''; return; }
+  div.innerHTML = '<div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">최근 검색</div>';
+  const chips = document.createElement('div');
+  chips.className = 'history-chips';
+  state.searchHistory.forEach(h => {
+    const chip = document.createElement('div');
+    chip.className = 'history-chip';
+    chip.innerHTML = `<span>${esc(h)}</span><span class="history-chip-del" onclick="event.stopPropagation();removeHistory('${esc(h)}')">×</span>`;
+    chip.onclick = () => { document.getElementById('query').value = h; doSearch(); };
+    chips.appendChild(chip);
+  });
+  div.appendChild(chips);
+}
+
+function removeHistory(q) {
+  state.searchHistory = state.searchHistory.filter(h => h !== q);
+  saveState();
+  renderHistory();
+}
+
+// ===== CONTEXT MENU =====
+function openCtxMenu(e, track, context, contextId) {
+  state.ctxTrack = track;
+  state.ctxContext = { type: context, id: contextId };
+  const menu = document.getElementById('ctx-menu');
+  const plItems = document.getElementById('ctx-playlist-items');
+  plItems.innerHTML = '';
+  state.playlists.forEach(pl => {
+    const d = document.createElement('div');
+    d.className = 'ctx-item';
+    d.innerHTML = `<svg fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg> ${esc(pl.name)}`;
+    d.onclick = () => { addTrackToPlaylist(track, pl.id); closeCtxMenu(); };
+    plItems.appendChild(d);
+  });
+  if (!state.playlists.length) {
+    plItems.innerHTML = '<div class="ctx-item" style="color:var(--text3);cursor:default;font-size:12px;">플레이리스트 없음</div>';
+  }
+  const removeItem = document.getElementById('ctx-remove-item');
+  removeItem.style.display = (context === 'favorites' || context === 'playlist') ? '' : 'none';
+  menu.style.left = Math.min(e.clientX, window.innerWidth-220) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight-300) + 'px';
+  menu.classList.add('open');
+}
+
+function closeCtxMenu() { document.getElementById('ctx-menu').classList.remove('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('#ctx-menu')) closeCtxMenu(); });
+
+function ctxPlay() { if (state.ctxTrack) playTrack(state.ctxTrack); closeCtxMenu(); }
+function ctxAddQueue() { if (state.ctxTrack) addToQueue(state.ctxTrack); closeCtxMenu(); }
+function ctxToggleFav() { if (state.ctxTrack) toggleFav(state.ctxTrack); closeCtxMenu(); }
+function ctxRemove() {
+  if (!state.ctxTrack || !state.ctxContext) return;
+  const { type, id } = state.ctxContext;
+  if (type === 'favorites') toggleFav(state.ctxTrack);
+  if (type === 'playlist') removeFromPlaylist(state.ctxTrack.videoId, id);
+  closeCtxMenu();
+}
+
+// ===== VIEWS =====
+function showView(name) {
+  const viewNames = { search:'검색', favorites:'즐겨찾기', playlists:'플레이리스트', queue:'재생 큐', recent:'최근 재생', settings:'설정', profile:'프로필', 'playlist-detail':'플레이리스트' };
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  const nav = document.getElementById('nav-' + name);
+  if (nav) nav.classList.add('active');
+  const mnav = document.getElementById('mnav-' + name);
+  if (mnav) mnav.classList.add('active');
+  state.currentView = name;
+  const titleEl = document.getElementById('mobile-topbar-title');
+  if (titleEl) titleEl.textContent = viewNames[name] || '';
+
+  if (name === 'favorites') { updateFavCount(); renderFavorites(); }
+  if (name === 'playlists') { renderPlaylists(); updateSidebarPlaylists(); }
+  if (name === 'queue') renderQueueView();
+  if (name === 'recent') renderRecent();
+  if (name === 'search') renderHistory();
+  if (name === 'profile') updateUserUI(currentUser);
+}
+
+// ===== HIGHLIGHT =====
+function updateAllTrackHighlights() {
+  document.querySelectorAll('.track-item').forEach(el => {
+    const vid = el.dataset.videoId;
+    const playing = state.currentTrack && state.currentTrack.videoId === vid;
+    el.classList.toggle('playing', playing);
+    const num = el.querySelector('.track-num');
+    if (num) {
+      if (playing) {
+        num.innerHTML = `<div class="playing-bars"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>`;
+      } else {
+        const existing = num.innerHTML;
+        if (existing.includes('playing-bars')) {
+          num.innerHTML = '•';
         }
+      }
     }
+  });
+}
 
-    function playMusic(videoId, title) {
-        const audioPlayer = document.getElementById('audioPlayer');
-        const songTitle = document.getElementById('current-song');
-        
-        // 오디오 스트림 추출 주소 (직접 연결 시도)
-        const audioUrl = `https://inv.tux.pizza/latest_version?id=${videoId}&itag=140&local=true`;
+// ===== TOAST =====
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
 
-        songTitle.innerText = `▶ 재생 중: ${title}`;
-        audioPlayer.src = audioUrl;
-        audioPlayer.play().catch(e => {
-            console.error("재생 에러:", e);
-            alert("이 곡은 현재 재생할 수 없습니다. 다른 검색 결과를 클릭해보세요.");
-        });
+// ===== INSTANCE MANAGEMENT =====
+function updateCurrentApiDisplay() {
+  const el = document.getElementById('current-api-display');
+  if (el) el.textContent = API;
+}
+
+async function checkInstance(url) {
+  const dot = document.getElementById('instance-dot');
+  const txt = document.getElementById('instance-status-text');
+  dot.className = 'instance-dot checking';
+  txt.textContent = '확인 중...';
+  try {
+    const res = await fetch(`${url}/api/v1/stats`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      dot.className = 'instance-dot ok';
+      txt.textContent = '연결됨';
+    } else {
+      throw new Error('not ok');
     }
+  } catch(e) {
+    dot.className = 'instance-dot err';
+    txt.textContent = '연결 실패';
+  }
+}
+
+async function refreshInstanceList() {
+  const loading = document.getElementById('instance-loading');
+  const select = document.getElementById('instance-select');
+  loading.style.display = 'flex';
+  select.style.display = 'none';
+
+  try {
+    const res = await fetch('https://api.invidious.io/instances.json?sort_by=health&pretty=1');
+    const data = await res.json();
+    select.innerHTML = '<option value="">-- 선택 --</option>';
+    const filtered = data.filter(([, info]) => info.api && info.uri);
+    filtered.forEach(([, info]) => {
+      const opt = document.createElement('option');
+      opt.value = info.uri;
+      opt.textContent = info.uri.replace('https://', '');
+      if (info.uri === API) opt.selected = true;
+      select.appendChild(opt);
+    });
+    loading.style.display = 'none';
+    select.style.display = '';
+    toast('인스턴스 목록 로드 완료');
+  } catch(e) {
+    loading.innerHTML = '목록 로드 실패 — 직접 입력해주세요';
+    loading.style.display = 'flex';
+    select.style.display = 'none';
+    toast('인스턴스 목록 로드 실패');
+  }
+}
+
+function onInstanceSelectChange(url) {
+  if (!url) return;
+  API = url;
+  localStorage.setItem('apiInstance', API);
+  updateCurrentApiDisplay();
+  checkInstance(API);
+  toast('서버 변경: ' + url);
+}
+
+function applyCustomInstance() {
+  let url = document.getElementById('custom-instance-input').value.trim();
+  if (!url) return;
+  if (url.endsWith('/')) url = url.slice(0, -1);
+  if (!url.startsWith('http')) url = 'https://' + url;
+  API = url;
+  localStorage.setItem('apiInstance', API);
+  updateCurrentApiDisplay();
+  checkInstance(API);
+  document.getElementById('custom-instance-input').value = '';
+  toast('서버 적용: ' + url);
+}
+
+// ===== INIT =====
+updateFavCount();
+updateSidebarPlaylists();
+renderHistory();
+updateCurrentApiDisplay();
+checkInstance(API);
+refreshInstanceList();
 </script>
-
 </body>
 </html>
