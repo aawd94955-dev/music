@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 무광고 플레이어</title>
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 100px; /* 플레이어 공간 확보 */
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #1DB954; /* 스포티파이 감성의 녹색 */
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: #282828;
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            background: #1DB954;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover { background: #1ed760; }
+        
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px;
+            background: #181818;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .result-item:hover { background: #282828; }
+        .thumbnail {
+            width: 80px;
+            height: 45px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+        .title { font-size: 14px; font-weight: bold; }
+        .author { font-size: 12px; color: #aaa; }
+
+        /* 하단 고정 플레이어 */
+        .player-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #181818;
+            border-top: 1px solid #282828;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        #current-song {
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #1DB954;
+        }
+        audio {
+            width: 100%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎵 무광고 플레이어</h1>
+    
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="듣고 싶은 노래 검색..." onkeypress="if(event.key === 'Enter') searchMusic()">
+        <button onclick="searchMusic()">검색</button>
+    </div>
+
+    <div id="loading" style="display:none; text-align:center; color:#aaa;">검색 중...</div>
+    <div id="results"></div>
+</div>
+
+<div class="player-bar">
+    <div id="current-song">재생 중인 곡이 없습니다</div>
+    <audio id="audioPlayer" controls></audio>
+</div>
+
+<script>
+    // 안정적인 Invidious 서버 주소 (yewtu.be가 막히면 api.invidious.io/instances.json 참고해서 변경 가능)
+    const API_URL = "https://yewtu.be/api/v1"; 
+
+    async function searchMusic() {
+        const query = document.getElementById('searchInput').value;
+        if (!query) return alert('검색어를 입력하세요!');
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('results').innerHTML = '';
+
+        try {
+            // 검색 API 호출
+            const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            document.getElementById('loading').style.display = 'none';
+
+            // 결과 화면에 그리기
+            data.forEach(item => {
+                // 영상 결과만 필터링
+                if (item.type !== 'video') return; 
+
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.onclick = () => playMusic(item.videoId, item.title);
+                
+                div.innerHTML = `
+                    <img src="${item.videoThumbnails[0] ? item.videoThumbnails[0].url : ''}" class="thumbnail">
+                    <div>
+                        <div class="title">${item.title}</div>
+                        <div class="author">${item.author}</div>
+                    </div>
+                `;
+                document.getElementById('results').appendChild(div);
+            });
+        } catch (error) {
+            alert('검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    function playMusic(videoId, title) {
+        const audioPlayer = document.getElementById('audioPlayer');
+        const songTitle = document.getElementById('current-song');
+        
+        // itag=140 (128kbps m4a 오디오 스트림), local=true (CORS 및 프록시 우회)
+        const audioUrl = `https://yewtu.be/latest_version?id=${videoId}&itag=140&local=true`;
+
+        // 재생 설정
+        songTitle.innerText = `▶ 재생 중: ${title}`;
+        audioPlayer.src = audioUrl;
+        audioPlayer.play();
+    }
+</script>
+
+</body>
+</html>
